@@ -1,0 +1,8 @@
+# Alpha Vantage API Configuration
+ALPHA_VANTAGE_API_KEY=your_api_key_here
+
+# Application Configuration
+# You can override these in your .env file
+# DEFAULT_SYMBOL=INDUSINDBK.BSE
+# RETRAIN_INTERVAL_HOURS=24
+# DATA_UPDATE_INTERVAL_HOURS=6 

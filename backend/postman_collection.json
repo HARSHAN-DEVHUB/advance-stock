@@ -1,0 +1,151 @@
+{
+  "info": {
+    "name": "Stock Prediction API",
+    "description": "Collection for testing the Stock Prediction API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Home",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Predictions",
+      "item": [
+        {
+          "name": "Make Prediction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Daily_Change\": 2.5,\n  \"Volatility\": 3.2,\n  \"MA_5\": 150.0,\n  \"MA_10\": 148.5,\n  \"MA_20\": 145.0,\n  \"Momentum\": 5.0,\n  \"Volume_Change\": 0.1,\n  \"RSI_14\": 65.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/predict/",
+              "host": ["{{base_url}}"],
+              "path": ["predict", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Manual Operations",
+      "item": [
+        {
+          "name": "Run Pipeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbol\": \"INDUSINDBK.BSE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pipeline/run",
+              "host": ["{{base_url}}"],
+              "path": ["pipeline", "run"]
+            }
+          }
+        },
+        {
+          "name": "Fetch Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbol\": \"INDUSINDBK.BSE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/data/fetch",
+              "host": ["{{base_url}}"],
+              "path": ["data", "fetch"]
+            }
+          }
+        },
+        {
+          "name": "Train Model",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbol\": \"INDUSINDBK.BSE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/model/train",
+              "host": ["{{base_url}}"],
+              "path": ["model", "train"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 
