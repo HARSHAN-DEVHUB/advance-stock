@@ -4,6 +4,7 @@ import joblib
 import smtplib
 from email.message import EmailMessage
 import datetime
+import os
 
 # === Load model and scaler ===
 model = joblib.load("./data/stock_prediction_model.pkl")
@@ -31,9 +32,12 @@ prediction = model.predict(scaled)[0]
 trend = "HIGHER" if prediction == 1 else "LOWER"
 
 # === Setup Email ===
-email_sender = "lionelharshanplayer@gmail.com"
-email_password = "urmbqohemghgbhuk"  # ← No spaces at all!
-email_receiver = "harshanharshu66@gmail.com"
+email_sender = os.getenv("EMAIL_SENDER")
+email_password = os.getenv("EMAIL_PASSWORD")
+email_receiver = os.getenv("EMAIL_RECEIVER")
+
+if not all([email_sender, email_password, email_receiver]):
+    raise ValueError("EMAIL_SENDER, EMAIL_PASSWORD, and EMAIL_RECEIVER environment variables are required")
 
 
 # === Format Email ===

@@ -1,194 +1,177 @@
-# Stock Prediction API
+# Stock Prediction API - Backend
 
-A FastAPI-based application that predicts stock opening prices using machine learning. The application automatically fetches data, preprocesses it, trains models, and provides predictions via REST API.
+Production-ready FastAPI backend for stock price prediction using advanced machine learning and technical analysis.
 
-## Features
+## 🚀 Quick Start
 
-- 🤖 **Automatic Data Fetching**: Fetches stock data from Alpha Vantage API
-- 🔧 **Data Preprocessing**: Cleans and prepares data with technical indicators
-- 🎯 **ML Model Training**: Uses XGBoost for prediction
-- ⏰ **Scheduled Updates**: Automatically updates data and retrains models
-- 🌐 **REST API**: Easy-to-use endpoints for predictions
-- 📊 **Health Monitoring**: Built-in health checks and status endpoints
+### Prerequisites
+- Python 3.9+
+- Alpha Vantage API Key (free at [alphavantage.co](https://www.alphavantage.co/))
 
-## Quick Start
+### Installation
 
-### 1. Install Dependencies
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+2. **Configure Environment** (Required):
+   ```bash
+   cp env_example.txt .env
+   # Edit .env with your actual credentials
+   ```
 
-### 2. Set Up Environment Variables
+3. **Start Application**:
+   ```bash
+   python start.py
+   ```
 
-Copy `env_example.txt` to `.env` and add your Alpha Vantage API key:
+## 🛡️ Security Features
 
-```bash
-cp env_example.txt .env
-# Edit .env and add your API key
-```
+- ✅ **No hardcoded secrets** - All credentials via environment variables
+- ✅ **Startup validation** - App fails fast if required env vars missing  
+- ✅ **Input sanitization** - Pydantic validation with proper ranges
+- ✅ **Proper error handling** - Appropriate HTTP status codes (404, 422, 500)
 
-### 3. Run the Application
+## 📊 API Endpoints
 
-```bash
-python start.py
-```
-
-The application will:
-- Run initial data fetch and model training (if no model exists)
-- Start the FastAPI server on `http://localhost:8000`
-- Begin scheduled tasks for automatic updates
-
-## API Endpoints
-
-### Health & Status
-- `GET /` - API home page
-- `GET /health` - Health check
+### Core Endpoints
+- `GET /health` - Health check with model status
 - `GET /status` - Detailed application status
+- `POST /predict/` - Make prediction (with input validation)
 
-### Predictions
-- `POST /predict/` - Make a stock prediction
+### Data Management
+- `GET /data/latest` - Get recent stock data
+- `GET /data/processed` - Get processed data with features
+- `POST /data/fetch` - Manual data fetch
 
-### Manual Operations
-- `POST /pipeline/run` - Run complete pipeline manually
-- `POST /data/fetch` - Fetch new data manually
-- `POST /model/train` - Train model manually
+### Model Operations  
+- `POST /pipeline/run` - Complete pipeline (fetch + preprocess + train)
+- `POST /model/train` - Train model only
 
-## Usage Examples
-
-### Making a Prediction
-
-```bash
-curl -X POST "http://localhost:8000/predict/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Daily_Change": 2.5,
-    "Volatility": 3.2,
-    "MA_5": 150.0,
-    "MA_10": 148.5,
-    "MA_20": 145.0,
-    "Momentum": 5.0,
-    "Volume_Change": 0.1,
-    "RSI_14": 65.0
-  }'
-```
-
-Response:
+### Input Validation
+All prediction inputs have strict validation:
 ```json
 {
-  "prediction": "Higher",
-  "confidence": "78.5%",
-  "timestamp": "2024-01-15T10:30:00",
-  "features_used": ["Daily Change %", "Volatility", "MA_5", ...]
+  "Daily_Change": -50.0,    // -50% to +50%
+  "Volatility": 0.0,        // 0% to 100%  
+  "MA_5": 1.0,              // Must be positive
+  "MA_10": 1.0,             // Must be positive
+  "MA_20": 1.0,             // Must be positive
+  "Momentum": -1000.0,      // -1000 to +1000
+  "Volume_Change": -10.0,   // -1000% to +1000%
+  "RSI_14": 0.0             // 0 to 100
 }
 ```
 
-### Running Pipeline Manually
+## 🔄 Resilience Features
 
-```bash
-curl -X POST "http://localhost:8000/pipeline/run" \
-  -H "Content-Type: application/json" \
-  -d '{"symbol": "INDUSINDBK.BSE"}'
-```
+### API Reliability
+- **Automatic retries** with exponential backoff for Alpha Vantage API
+- **30-second timeouts** on all external API calls
+- **Rate limit handling** with appropriate error messages
+- **Data quality validation** before processing
 
-## Configuration
+### Error Handling
+- **HTTP 404**: Data not found (run `/data/fetch` first)
+- **HTTP 422**: Invalid input data (check validation ranges) 
+- **HTTP 503**: Model not loaded (run `/pipeline/run` first)
+- **HTTP 500**: Unexpected errors (check logs)
 
-Edit `config.py` to customize:
+## 💾 Data Pipeline
 
-- **Supported Symbols**: Add more stock symbols
-- **Update Intervals**: Change how often data updates and model retrains
-- **API Settings**: Modify Alpha Vantage API configuration
+### Flow
+1. **Fetch**: Download daily OHLCV data from Alpha Vantage
+2. **Validate**: Check data quality and completeness
+3. **Preprocess**: Calculate technical indicators (MA, RSI, etc.)
+4. **Train**: XGBoost classification model
+5. **Serve**: Load model for predictions
 
-## Deployment Options
+### Storage
+- Raw data: `../data/{symbol}_stock_data.csv`
+- Processed data: `../data/{symbol}_stock_data_processed.csv`  
+- Model: `../data/stock_prediction_model.pkl`
+- Scaler: `../data/scaler.pkl`
+
+## 🐳 Deployment
 
 ### Local Development
 ```bash
 python start.py
 ```
 
-### Production with Gunicorn
+### Docker (Production)
 ```bash
-pip install gunicorn
-gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-```
+# Using docker-compose (recommended)
+docker-compose up -d
 
-### Docker Deployment
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["python", "start.py"]
+# Manual docker build
+docker build -t stock-api . 
+docker run -p 8000:8000 --env-file .env stock-api
 ```
 
 ### Cloud Deployment
-
-#### Heroku
-1. Create `Procfile`:
-   ```
-   web: python start.py
-   ```
-2. Deploy to Heroku
-
-#### Railway/Render
-- Connect your GitHub repository
-- Set environment variables
-- Deploy automatically
-
-## Monitoring
-
-The application includes built-in monitoring:
-
-- **Health Checks**: `/health` endpoint
-- **Status Monitoring**: `/status` endpoint
-- **Automatic Logging**: All operations are logged
-- **Error Handling**: Comprehensive error handling
-
-## Troubleshooting
-
-### Common Issues
-
-1. **API Key Issues**: Ensure your Alpha Vantage API key is valid
-2. **Model Not Loading**: Run `/pipeline/run` to train the model
-3. **Data Fetch Failures**: Check API limits and internet connection
-4. **Port Conflicts**: Change port in `start.py` if 8000 is busy
-
-### Logs
-
-Check the console output for detailed logs about:
-- Data fetching status
-- Model training progress
-- API request handling
-- Scheduled task execution
-
-## Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   FastAPI App   │    │  Data Manager   │    │  Scheduler      │
-│                 │    │                 │    │                 │
-│  - REST API     │◄──►│  - Data Fetch   │◄──►│  - Auto Updates │
-│  - Predictions  │    │  - Preprocess   │    │  - Model Retrain│
-│  - Health Check │    │  - Model Train  │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   HTTP Client   │    │   Data Files    │    │  Background     │
-│  (Postman/etc)  │    │  (CSV, PKL)     │    │   Tasks        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+```bash
+# Deploy script with multiple options
+./deploy.sh docker  # Docker deployment
+./deploy.sh local   # Local deployment
 ```
 
-## Contributing
+## 🗂 Scripts
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+All scripts now use the centralized `DataManager`:
 
-## License
+- `python predict.py` - Make standalone predictions
+- `python train_model.py [symbol]` - Train model for symbol
+- `python data_fetch.py [symbol]` - Fetch data for symbol  
+- `python preprocess.py [symbol]` - Preprocess data for symbol
+- `python test_api.py` - Test all API endpoints
 
-This project is licensed under the MIT License. 
+## 🔍 Troubleshooting
+
+### Environment Issues
+```bash
+# Missing API key error
+echo "ALPHA_VANTAGE_API_KEY=your_key" >> .env
+
+# Validation error on startup 
+cp env_example.txt .env  # Then edit with real values
+```
+
+### Model Issues  
+```bash
+# Model not found (503 error)
+curl -X POST http://localhost:8000/pipeline/run
+
+# Training failures
+# Check logs for specific errors (API limits, data quality, etc.)
+```
+
+### API Issues
+```bash
+# Test API health
+curl http://localhost:8000/health
+
+# Check detailed status
+curl http://localhost:8000/status
+
+# Run test suite
+python test_api.py
+```
+
+### Data Quality
+- API automatically retries failed requests
+- Data validation prevents corrupt datasets
+- Check logs for specific Alpha Vantage errors
+
+## 🎨 Architecture
+
+```
+FastAPI App → DataManager → Alpha Vantage API
+     │              │
+     ▼              ▼  
+ Input Validation   Data Storage
+ Error Handling    Model Cache
+```
+
+**Production Ready**: Security, reliability, and monitoring built-in. 

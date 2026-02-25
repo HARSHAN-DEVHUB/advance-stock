@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # API Configuration
-API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "2KQFY7C6QSGD56WA")
+API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
+if not API_KEY:
+    raise ValueError("ALPHA_VANTAGE_API_KEY environment variable is required")
 BASE_URL = "https://www.alphavantage.co/query"
 
 # Stock Configuration

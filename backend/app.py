@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uvicorn
 from datetime import datetime
 import os
 import pandas as pd
 from data_manager import DataManager
-from config import *
+from config import DEFAULT_SYMBOL, DATA_DIR
 
 app = FastAPI(title="Stock Prediction API", version="1.0.0")
 
@@ -13,14 +13,14 @@ app = FastAPI(title="Stock Prediction API", version="1.0.0")
 data_manager = DataManager()
 
 class StockData(BaseModel):
-    Daily_Change: float
-    Volatility: float
-    MA_5: float
-    MA_10: float
-    MA_20: float
-    Momentum: float
-    Volume_Change: float
-    RSI_14: float
+    Daily_Change: float = Field(..., ge=-50, le=50, description="Daily change percentage (-50% to +50%)")
+    Volatility: float = Field(..., ge=0, le=100, description="Volatility percentage (0% to 100%)")
+    MA_5: float = Field(..., gt=0, description="5-day moving average (must be positive)")
+    MA_10: float = Field(..., gt=0, description="10-day moving average (must be positive)")
+    MA_20: float = Field(..., gt=0, description="20-day moving average (must be positive)")
+    Momentum: float = Field(..., ge=-1000, le=1000, description="Price momentum (-1000 to +1000)")
+    Volume_Change: float = Field(..., ge=-10, le=10, description="Volume change ratio (-1000% to +1000%)")
+    RSI_14: float = Field(..., ge=0, le=100, description="RSI indicator (0 to 100)")
 
 class PipelineRequest(BaseModel):
     symbol: str = DEFAULT_SYMBOL
@@ -90,8 +90,14 @@ async def get_latest_data(symbol: str = DEFAULT_SYMBOL):
             "latest_3_days": formatted_data
         }
         
+    except HTTPException:
+        raise  # Let FastAPI handle HTTP exceptions
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"No data found for {symbol}. Run /data/fetch first.")
+    except pd.errors.EmptyDataError:
+        raise HTTPException(status_code=422, detail=f"Data file for {symbol} is empty or corrupted.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error fetching data: {str(e)}")
 
 @app.get("/data/processed")
 async def get_processed_data(symbol: str = DEFAULT_SYMBOL):
@@ -171,8 +177,12 @@ async def predict(data: StockData):
             "features_used": list(input_data.keys())
         }
         
+    except HTTPException:
+        raise  # Let FastAPI handle HTTP exceptions
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid input data: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected prediction error: {str(e)}")
 
 @app.post("/pipeline/run")
 async def run_pipeline(request: PipelineRequest):
@@ -187,8 +197,10 @@ async def run_pipeline(request: PipelineRequest):
             }
         else:
             raise HTTPException(status_code=500, detail="Pipeline failed")
+    except HTTPException:
+        raise  # Let FastAPI handle HTTP exceptions
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected pipeline error: {str(e)}")
 
 @app.post("/data/fetch")
 async def fetch_data(request: PipelineRequest):

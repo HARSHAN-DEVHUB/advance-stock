@@ -12,6 +12,14 @@ from datetime import datetime
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Validate required environment variables before importing config
+required_env_vars = ['ALPHA_VANTAGE_API_KEY']
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+if missing_vars:
+    print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
+    print("📝 Please create a .env file with the required variables (see env_example.txt)")
+    sys.exit(1)
+
 from data_manager import DataManager
 from config import *
 

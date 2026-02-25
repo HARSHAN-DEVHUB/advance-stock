@@ -3,6 +3,7 @@ import numpy as np
 import requests
 import os
 import joblib
+import time
 from datetime import datetime, timedelta
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -16,8 +17,8 @@ class DataManager:
         self.scaler = None
         self.load_model()
     
-    def fetch_stock_data(self, symbol=DEFAULT_SYMBOL):
-        """Fetch latest stock data for Indian stocks using Alpha Vantage"""
+    def fetch_stock_data(self, symbol=DEFAULT_SYMBOL, max_retries=3, timeout=30):
+        """Fetch latest stock data for Indian stocks using Alpha Vantage with retry logic"""
         print(f"📊 Fetching data for {symbol}...")
         
         params = {
@@ -27,43 +28,69 @@ class DataManager:
             "apikey": API_KEY
         }
         
-        try:
-            response = requests.get(BASE_URL, params=params)
-            data = response.json()
-            
-            if "Time Series (Daily)" not in data:
-                print(f"❌ No data found for {symbol} or API limit reached.")
+        for attempt in range(max_retries):
+            try:
+                print(f"🔄 Attempt {attempt + 1}/{max_retries}")
+                response = requests.get(BASE_URL, params=params, timeout=timeout)
+                response.raise_for_status()  # Raise exception for HTTP errors
+                
+                data = response.json()
+                
+                # Check for API errors
+                if "Error Message" in data:
+                    raise ValueError(f"API Error: {data['Error Message']}")
+                if "Note" in data:
+                    raise ValueError(f"API Rate Limit: {data['Note']}")
+                if "Information" in data:
+                    raise ValueError(f"API Info: {data['Information']}")
+                
+                if "Time Series (Daily)" not in data:
+                    raise ValueError(f"No time series data found for {symbol}")
+
+                ts_data = data["Time Series (Daily)"]
+                if not ts_data:
+                    raise ValueError(f"Empty time series data for {symbol}")
+                df = pd.DataFrame.from_dict(ts_data, orient="index")
+                df = df.rename(columns={
+                    "1. open": "Open",
+                    "2. high": "High",
+                    "3. low": "Low",
+                    "4. close": "Close",
+                    "5. volume": "Volume"
+                })
+                
+                df.index = pd.to_datetime(df.index)
+                df = df.sort_index()
+                
+                for col in ["Open", "High", "Low", "Close", "Volume"]:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+                
+                # Validate data quality
+                if df.isnull().all().any():
+                    raise ValueError(f"Data contains all null values for some columns")
+                    
+                df["Daily Change %"] = (df["Close"] - df["Open"]) / df["Open"] * 100
+                df["Volatility"] = (df["High"] - df["Low"]) / df["Open"] * 100
+
+                file_path = os.path.join(DATA_DIR, f"{symbol}_stock_data.csv")
+                df.to_csv(file_path)
+                print(f"✅ Data saved: {file_path}")
+                
+                self.last_update = datetime.now()
+                return df
+                
+            except (requests.RequestException, ValueError) as e:
+                print(f"❌ Attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff
+                    print(f"⏳ Waiting {wait_time}s before retry...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"❌ All {max_retries} attempts failed")
+                    return None
+            except Exception as e:
+                print(f"❌ Unexpected error: {e}")
                 return None
-
-            ts_data = data["Time Series (Daily)"]
-            df = pd.DataFrame.from_dict(ts_data, orient="index")
-            df = df.rename(columns={
-                "1. open": "Open",
-                "2. high": "High",
-                "3. low": "Low",
-                "4. close": "Close",
-                "5. volume": "Volume"
-            })
-            
-            df.index = pd.to_datetime(df.index)
-            df = df.sort_index()
-            
-            for col in ["Open", "High", "Low", "Close", "Volume"]:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-            
-            df["Daily Change %"] = (df["Close"] - df["Open"]) / df["Open"] * 100
-            df["Volatility"] = (df["High"] - df["Low"]) / df["Open"] * 100
-
-            file_path = os.path.join(DATA_DIR, f"{symbol}_stock_data.csv")
-            df.to_csv(file_path)
-            print(f"✅ Data saved: {file_path}")
-            
-            self.last_update = datetime.now()
-            return df
-            
-        except Exception as e:
-            print(f"❌ Error fetching data: {e}")
-            return None
 
     def preprocess_data(self, symbol=DEFAULT_SYMBOL):
         """Clean and prepare stock data for prediction"""
