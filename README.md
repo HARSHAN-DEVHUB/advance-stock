@@ -1,246 +1,236 @@
 # Stock Prediction API
 
-A production-ready FastAPI application that predicts stock opening prices using machine learning. The application fetches data, preprocesses technical indicators, trains XGBoost models, and provides predictions via secure REST API endpoints.
+Comprehensive project repository for a production-ready FastAPI application that predicts stock opening prices using machine learning and technical analysis. This repository contains a backend FastAPI service, frontend React app, data, and tooling to fetch, preprocess, train, and serve models.
+
+## Contents
+
+- `backend/` - FastAPI backend, data pipeline, training and prediction scripts
+- `frontend/` - React frontend for interacting with the API
+- `data/` - Raw and processed CSVs and model artifacts
 
 ## Features
 
-- 🤖 **Intelligent Data Fetching**: Robust Alpha Vantage API integration with retry logic and exponential backoff
-- 🔧 **Advanced Preprocessing**: Technical indicators (MA, RSI, momentum, volatility) with data validation
-- 🎯 **ML Model Training**: XGBoost classification with proper error handling
-- 🔐 **Security First**: Environment-based configuration, no hardcoded secrets
-- 🛡️ **Input Validation**: Pydantic models with range validation for all prediction inputs
-- 🌐 **Reliable REST API**: Proper HTTP status codes, structured error responses
-- 📊 **Health Monitoring**: Comprehensive health checks and status endpoints
-- 🔄 **Resilient Architecture**: Timeout handling, retry mechanisms, graceful degradation
+- Intelligent data fetching from Alpha Vantage with retries and exponential backoff
+- Technical indicator preprocessing (MA, RSI, momentum, volatility)
+- XGBoost model training with input validation and error handling
+- Pydantic request validation and strict input ranges
+- Health and status endpoints for monitoring
+- Docker and docker-compose support for deployment
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Prerequisites
+
+- Python 3.9+
+- Alpha Vantage API Key (register at https://www.alphavantage.co/)
+
+### Install
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
-### 2. Set Up Environment Variables (Required)
+### Configure Environment
 
-Copy `env_example.txt` to `.env` and configure all required variables:
+Copy and edit the environment example for required variables:
 
 ```bash
 cp backend/env_example.txt backend/.env
+# Edit backend/.env and set ALPHA_VANTAGE_API_KEY and optional email credentials
 ```
 
-Edit `.env` file with your credentials:
-```bash
-# Required - Application will fail without this
-ALPHA_VANTAGE_API_KEY=your_actual_api_key_here
+Security: never commit `.env` files; the app validates required variables at startup.
 
-# Required for email notifications (auto_predict.py)
-EMAIL_SENDER=your_email@gmail.com
-EMAIL_PASSWORD=your_app_password
-EMAIL_RECEIVER=recipient@gmail.com
-```
-
-⚠️ **Security Note**: Never commit `.env` files to version control. The application will refuse to start without required environment variables.
-
-### 3. Run the Application
+### Run (Local)
 
 ```bash
 cd backend
 python start.py
 ```
 
-The application will:
-- Validate all required environment variables
-- Run initial data fetch and model training (if no model exists)
-- Start the FastAPI server on `http://localhost:8000`
-- Provide manual endpoints for pipeline operations
+This will validate environment variables, fetch initial data, train a model if absent, and serve the API on http://localhost:8000
 
-**First Run**: The app automatically fetches data and trains the model on startup if no existing model is found.
+## Backend API Endpoints
 
-## API Endpoints
+- `GET /health` - Health check (model status)
+- `GET /status` - Detailed application and model status
+- `POST /predict/` - Make a prediction (validated input)
+- `GET /data/latest` - Recent raw data
+- `GET /data/processed` - Processed data with features
+- `POST /data/fetch` - Manually fetch data
+- `POST /pipeline/run` - Run full pipeline (fetch → preprocess → train)
+- `POST /model/train` - Train model only
 
-### Health & Status
-- `GET /` - API home page
-- `GET /health` - Health check
-- `GET /status` - Detailed application status
+### Prediction Input (validation)
 
-### Predictions
-- `POST /predict/` - Make a stock prediction
+All input fields are validated by Pydantic with these ranges:
 
-### Manual Operations
-- `POST /pipeline/run` - Run complete pipeline manually
-- `POST /data/fetch` - Fetch new data manually
-- `POST /model/train` - Train model manually
-
-## Usage Examples
-
-### Making a Prediction
-
-```bash
-curl -X POST "http://localhost:8000/predict/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Daily_Change": 2.5,
-    "Volatility": 3.2,
-    "MA_5": 150.0,
-    "MA_10": 148.5,
-    "MA_20": 145.0,
-    "Momentum": 5.0,
-    "Volume_Change": 0.1,
-    "RSI_14": 65.0
-  }'
-**Input Validation**: All fields have validation ranges:
-- `Daily_Change`: -50% to +50%
-- `Volatility`: 0% to 100%
-- `MA_5`, `MA_10`, `MA_20`: Must be positive
-- `Momentum`: -1000 to +1000
-- `Volume_Change`: -1000% to +1000%
-- `RSI_14`: 0 to 100```
-
-**Success Response (200)**:
 ```json
 {
-  "prediction": "Higher",
-  "confidence": "78.5%",
-  "timestamp": "2024-01-15T10:30:00",
-  "features_used": ["Daily Change %", "Volatility", "MA_5", ...]
+   "Daily_Change": -50.0,    // -50% to +50%
+   "Volatility": 0.0,        // 0% to 100%
+   "MA_5": 1.0,              // positive
+   "MA_10": 1.0,             // positive
+   "MA_20": 1.0,             // positive
+   "Momentum": -1000.0,      // -1000 to +1000
+   "Volume_Change": -1000.0, // -1000% to +1000%
+   "RSI_14": 0.0             // 0 to 100
 }
 ```
 
-**Error Responses**:
-- `422`: Invalid input data (out of range values)
-- `503`: Model not loaded (run `/pipeline/run` first)
-- `500`: Unexpected prediction error
+## Usage Examples
 
-### Running Pipeline Manually
+Making a prediction:
 
 ```bash
-curl -X POST "http://localhost:8000/pipeline/run" \
-  -H "Content-Type: application/json" \
-  -d '{"symbol": "INDUSINDBK.BSE"}'
+curl -X POST "http://localhost:8000/predict/" \
+   -H "Content-Type: application/json" \
+   -d '{
+      "Daily_Change": 2.5,
+      "Volatility": 3.2,
+      "MA_5": 150.0,
+      "MA_10": 148.5,
+      "MA_20": 145.0,
+      "Momentum": 5.0,
+      "Volume_Change": 0.1,
+      "RSI_14": 65.0
+   }'
 ```
 
-## Configuration
+Typical responses:
 
-**Environment Variables** (`.env` file):
-- `ALPHA_VANTAGE_API_KEY`: Your Alpha Vantage API key (required)
-- `EMAIL_SENDER`: Gmail address for notifications (optional)
-- `EMAIL_PASSWORD`: Gmail app password (optional)
-- `EMAIL_RECEIVER`: Recipient email (optional)
+- `200` success with `prediction`, `confidence`, `timestamp`, `features_used`
+- `422` invalid input
+- `503` model not loaded (run `/pipeline/run`)
+- `500` server error
 
-**Code Configuration** (`backend/config.py`):
-- **Supported Symbols**: Add/modify stock symbols
-- **Feature Engineering**: Customize technical indicators
-- **Model Parameters**: Adjust XGBoost settings
-- **File Paths**: Configure data storage locations
+Run the pipeline manually:
 
-**Security Features**:
-- ✅ No hardcoded secrets in code
-- ✅ Environment validation on startup
-- ✅ Input sanitization and validation
-- ✅ Proper error handling with appropriate HTTP codes
-
-## Deployment Options
-
-### Local Development
 ```bash
+curl -X POST "http://localhost:8000/pipeline/run" -H "Content-Type: application/json" -d '{"symbol": "INDUSINDBK.BSE"}'
+```
+
+## Data Pipeline & Storage
+
+Flow:
+1. Fetch OHLCV data from Alpha Vantage
+2. Validate and clean data
+3. Preprocess to compute technical features (MA, RSI, momentum, volatility)
+4. Train XGBoost classifier
+5. Serve predictions via FastAPI
+
+Storage:
+
+- Raw data: `data/{symbol}_stock_data.csv`
+- Processed data: `data/{symbol}_stock_data_processed.csv`
+- Model: `data/stock_prediction_model.pkl`
+- Scaler: `data/scaler.pkl`
+
+Scripts (backend):
+
+- `python predict.py` - standalone prediction helper
+- `python train_model.py [symbol]` - train model
+- `python data_fetch.py [symbol]` - fetch raw data
+- `python preprocess.py [symbol]` - preprocess raw data
+- `python test_api.py` - run API integration tests
+
+## Reliability & Error Handling
+
+- Automatic retries with exponential backoff for external API calls
+- 30-second timeouts for external requests
+- Rate limit handling and clear error messages
+- Data quality checks before processing
+
+HTTP error mapping:
+
+- `404` data not found
+- `422` validation error
+- `503` model not loaded
+- `500` unexpected error
+
+## Deployment
+
+Local development:
+
+```bash
+cd backend
 python start.py
 ```
 
-### Production with Gunicorn
-```bash
-pip install gunicorn
-gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-```
+Docker (recommended for production):
 
-### Docker Deployment
-
-**Using docker-compose (Recommended)**:
 ```bash
 cd backend
-# Set environment variables
-echo "ALPHA_VANTAGE_API_KEY=your_key_here" > .env
 docker-compose up -d
-```
-
-**Manual Docker Build**:
-```bash
-cd backend
+# or manual
 docker build -t stock-prediction-api .
 docker run -p 8000:8000 --env-file .env stock-prediction-api
 ```
 
-**Health Check**: Docker includes automatic health monitoring via `/health` endpoint.
+Cloud options:
 
-### Cloud Deployment
+- Heroku: create a `Procfile` with `web: python start.py` and deploy
+- Railway/Render: connect repo and set environment variables
+- `./deploy.sh docker` or `./deploy.sh local` (helper script included)
 
-#### Heroku
-1. Create `Procfile`:
-   ```
-   web: python start.py
-   ```
-2. Deploy to Heroku
+## Frontend
 
-#### Railway/Render
-- Connect your GitHub repository
-- Set environment variables
-- Deploy automatically
+The `frontend/` folder contains a React app (Vite) with components for dashboard, prediction form, training UI, and data display. Start it with:
 
-## Monitoring
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-The application includes built-in monitoring:
+Default dev server runs on port 3001.
 
-- **Health Checks**: `/health` endpoint
-- **Status Monitoring**: `/status` endpoint
-- **Automatic Logging**: All operations are logged
-- **Error Handling**: Comprehensive error handling
+## Monitoring & Observability
+
+- `/health` and `/status` endpoints
+- Logging for data fetches, training, and API requests
+- Graceful shutdown and startup validation
 
 ## Troubleshooting
 
-### Common Issues
+Environment issues:
 
-1. **Environment Variables Missing**: 
-   - Error: "Missing required environment variables: ALPHA_VANTAGE_API_KEY"
-   - Solution: Create `.env` file with required variables
+```bash
+# Missing API key
+echo "ALPHA_VANTAGE_API_KEY=your_key" >> backend/.env
 
-2. **API Key Issues**: 
-   - Error: "API Error" or "API Rate Limit"
-   - Solution: Check API key validity and rate limits
-   - The app automatically retries with exponential backoff
+# Validation error on startup
+cp backend/env_example.txt backend/.env
+# Edit with real values
+```
 
-3. **Model Not Loading**: 
-   - Error: HTTP 503 "Model not loaded"
-   - Solution: Run `POST /pipeline/run` to train the model
+Model issues:
 
-4. **Input Validation Errors**: 
-   - Error: HTTP 422 "Invalid input data"
-   - Solution: Check input ranges (RSI 0-100, positive MAs, etc.)
+```bash
+# Model not found
+curl -X POST http://localhost:8000/pipeline/run
 
-5. **Data Fetch Failures**: 
-   - Automatic retry mechanism with exponential backoff
-   - Check API limits and internet connection
-   - Monitor logs for specific error details
+# Run tests
+python backend/test_api.py
+```
 
-### Logs
+Data quality:
 
-Check the console output for detailed logs about:
-- Data fetching status
-- Model training progress
-- API request handling
-- Scheduled task execution
+- The app retries failed requests and validates datasets before training. Check logs for Alpha Vantage errors and rate limits.
 
 ## Architecture
+
+High-level diagram:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   FastAPI App   │    │  Data Manager   │    │   External APIs │
-│                 │    │                 │    │                 │
 │  - REST API     │◄──►│  - Data Fetch   │◄──►│  - Alpha Vantage│
 │  - Validation   │    │  - Preprocess   │    │  - Retry Logic  │
 │  - Error Handle │    │  - Model Train  │    │  - Rate Limits  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
+             │                       │                       │
+             ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   HTTP Client   │    │   Data Storage  │    │  Environment    │
 │  - Status Codes │    │  - CSV Files    │    │  - Env Variables│
@@ -248,20 +238,14 @@ Check the console output for detailed logs about:
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-**Key Improvements**:
-- 🔐 **Security**: Environment-based secrets, input validation
-- 🛡️ **Reliability**: API retries, timeout handling, proper error codes
-- 📊 **Monitoring**: Health checks, structured error responses
-- 🔄 **Resilience**: Graceful degradation, automatic retry mechanisms
-
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+3. Implement and test changes
+4. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License. 
+MIT License
+
