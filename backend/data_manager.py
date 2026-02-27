@@ -24,7 +24,7 @@ class DataManager:
         params = {
             "function": "TIME_SERIES_DAILY",
             "symbol": symbol,
-            "outputsize": "full",
+            "outputsize": "compact",
             "apikey": API_KEY
         }
         

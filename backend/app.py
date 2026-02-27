@@ -1,13 +1,28 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
 from datetime import datetime
 import os
 import pandas as pd
 from data_manager import DataManager
-from config import DEFAULT_SYMBOL, DATA_DIR
+from config import DEFAULT_SYMBOL, DATA_DIR, SUPPORTED_SYMBOLS
 
 app = FastAPI(title="Stock Prediction API", version="1.0.0")
+
+# Add CORS middleware to allow frontend communication
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001"
+    ],  # React dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize data manager
 data_manager = DataManager()
@@ -218,6 +233,23 @@ async def fetch_data(request: PipelineRequest):
             raise HTTPException(status_code=500, detail="Data fetch failed")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Data fetch error: {str(e)}")
+
+@app.post("/preprocess")
+async def preprocess_data(request: PipelineRequest):
+    """Manually preprocess data"""
+    try:
+        df = data_manager.preprocess_data(request.symbol)
+        if df is not None:
+            return {
+                "message": "Data preprocessed successfully",
+                "symbol": request.symbol,
+                "rows": len(df),
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Data preprocessing failed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Preprocessing error: {str(e)}")
 
 @app.post("/model/train")
 async def train_model(request: PipelineRequest):
