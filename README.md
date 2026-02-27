@@ -249,3 +249,25 @@ High-level diagram:
 
 MIT License
 
+## Results (Screenshots)
+
+Below are example screenshots from the frontend showing the dashboard, prediction form, training & pipeline UI, and the stock data viewer. Add the actual image files to `docs/screenshots/` using the filenames shown below so they render in this README.
+
+- Dashboard (API status, model/scaler status, supported symbols):
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+- Predict (input form for technical indicators):
+
+![Predict Form](docs/screenshots/predict.png)
+
+- Train Model (pipeline and data operations panel):
+
+![Train & Pipeline](docs/screenshots/train.png)
+
+- Stock Data Viewer (processed data table and CSV download):
+
+![Stock Data Viewer](docs/screenshots/data_viewer.png)
+
+
+
